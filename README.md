@@ -1,46 +1,44 @@
 # Flask Products API
 
-A RESTful API for managing products built with Flask and MySQL.
+A RESTful API for managing products built with Flask and SQLite3.
 
 ## Prerequisites
 
 - Python 3.11 or higher
-- MySQL Server
 - Docker (optional)
 
 ## Environment Variables
 
 The application can be configured using the following environment variables:
 
-- `DB_HOST`: MySQL host (default: localhost)
-- `DB_PORT`: MySQL port (default: 3306)
-- `DB_USER`: MySQL user (default: root)
-- `DB_PASSWORD`: MySQL password (default: root)
-- `DB_NAME`: MySQL database name (default: products)
+- `DB_PATH`: SQLite database file path (default: `products.db`)
 
 ## Database Setup
 
-You can initialize the database using the provided `db_init.sql` script:
+You can initialize the database using the provided `db_init.sql` script or via Flask CLI:
 
 ```bash
-# Using MySQL command line
-mysql -u root -p < db_init.sql
+# Using SQLite command line
+sqlite3 products.db < db_init.sql
 
-# Or using Docker if you have MySQL running in a container
-docker exec -i mysql-container mysql -u root -p < db_init.sql
+# Or using Flask CLI
+flask init-db
+
+# Or using Python
+python -c "from app import init_db; init_db()"
 ```
 
 The script will:
 
-1. Create the database if it doesn't exist
-2. Create the products table with the following columns:
+1. Create the `products` table with the following columns:
    - id (auto-incrementing primary key)
-   - name (VARCHAR)
-   - price (DECIMAL)
+   - name (TEXT)
+   - price (REAL)
    - created_at (TIMESTAMP)
    - updated_at (TIMESTAMP)
-3. Insert 10 sample products
-4. Create an index on the name column for faster searches
+2. Create an automatic trigger to update the `updated_at` timestamp when rows are modified
+3. Create an index on the `name` column for faster searches
+4. Insert 10 sample products
 
 ## Local Setup
 
@@ -53,17 +51,23 @@ pip install -r requirements.txt
 2. (Optional) Set environment variables:
 
 ```bash
-export DB_HOST=localhost
-export DB_PORT=3306
-export DB_USER=root
-export DB_PASSWORD=root
-export DB_NAME=products
+export DB_PATH=products.db
 ```
 
-3. Run the application:
+3. Initialize the database:
 
 ```bash
+flask init-db
+```
+
+4. Run the application:
+
+```bash
+# Using gunicorn
 gunicorn -w 4 -b 0.0.0.0:8000 app:app
+
+# Or using Python directly (automatically initializes DB if missing)
+python app.py
 ```
 
 ## Docker Setup
@@ -74,16 +78,16 @@ gunicorn -w 4 -b 0.0.0.0:8000 app:app
 docker build -t flask-products-api .
 ```
 
-2. Run the container with environment variables:
+2. Run the container:
 
 ```bash
-docker run -p 8000:8000 \
-  -e DB_HOST=host.docker.internal \
-  -e DB_PORT=3306 \
-  -e DB_USER=root \
-  -e DB_PASSWORD=root \
-  -e DB_NAME=products \
-  flask-products-api
+docker run -p 8000:8000 flask-products-api
+```
+
+To persist the database across container restarts, mount a volume:
+
+```bash
+docker run -p 8000:8000 -v $(pwd)/products.db:/app/products.db flask-products-api
 ```
 
 ## API Endpoints
